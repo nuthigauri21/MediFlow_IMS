@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 import datetime
 import random
 from utils.file_handler import load_medicines, load_sales, record_sale
@@ -53,7 +54,7 @@ else:
             with col_in2:
                 selling_price = st.number_input("Selling Unit Price (₹) *", min_value=0.0, value=unit_price, step=5.0)
                 
-            sale_date = st.date_input("Sale Date *", value=datetime.date(2026, 7, 10))
+            sale_date = st.date_input("Sale Date *", value=datetime.date.today())
             
             submit_sale = st.form_submit_button("💳 Process Transaction & Generate Bill")
             

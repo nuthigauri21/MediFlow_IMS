@@ -1,115 +1,85 @@
-# MediFlow IMS - Medical Store Inventory System
+# MediFlow IMS — Pharmacy Inventory & Management System
 
-MediFlow IMS is a modern, responsive, and fully-featured Pharmacy Inventory Management System built using Python and Streamlit. This application was designed as a Degree College Mini Project to demonstrate robust data structures, validation pipelines, analytical plotting, and transactional state updates using standard Python tools and flat CSV files (no SQL databases required).
+A Python + Streamlit inventory application for managing medicine records, stock levels, expiry dates, sales and operational reporting.
 
----
+## Redesigned release
 
-## 🚀 Features
+This release retains the existing Streamlit application and its modules while upgrading the data layer and dashboard:
 
-- **Responsive Analytics Dashboard**: High-level visual KPI metrics (total medicines, stock volumes, warning indicators for low/expired items, today's sales and revenues) and live Plotly visualizer charts.
-- **Form-Validated Inventory Registration**: Prevent duplicate IDs, check purchase/expiration order, flag negative numbers, and auto-generate unique medicine keys.
-- **Searchable Inventory Directory**: Real-time filtering by category, manufacturer, date range, search query terms, and interactive sorting columns. Includes direct edit/deletion forms.
-- **Active Stock Controller**: Adjustment selectors for increasing, decreasing, or setting exact stock levels with real-time notifications for critical bounds.
-- **Sales & Billing Module**: Log transactions, verify quantity margins, deduct quantities from CSV datasets, and print a formatted shop receipt on screen.
-- **Expiry Compliance Tracker**: Highlight expired inventory, calculate batches expiring in the next 30 days, and export audit reports directly to Excel-compatible CSVs.
-- **Report Manager**: Download filtered spreadsheets for current stock levels, low-stock warnings, monthly sales logs, or category value analyses.
-- **Modern UI Styling**: Tailored CSS for card layouts, glassmorphic metrics, custom color palettes, brand logo rendering, and smooth sidebar layout.
+- **SQLite database** for structured medicine, sales, supplier, user and stock-movement records.
+- **One-time CSV migration**: existing `data/medicines.csv`, `data/sales.csv` and `data/suppliers.csv` are imported into SQLite on first run when the corresponding database table is empty. Original CSVs are kept as import backups.
+- **Transactional sales**: a sale, stock deduction and stock-movement record are committed together, preventing partial transactions.
+- **Password security**: new accounts use salted PBKDF2-HMAC-SHA256 password hashes. Legacy SHA-256 account hashes are upgraded after a successful login.
+- **Dashboard refresh**: KPI cards, date/category filters, sales trend, category mix, low-stock and expiry attention tables, and recent stock movements.
+- **Dynamic dates**: expiry and sales views use the current system date instead of a fixed demo date.
 
----
+## Features
 
-## 📂 Project Structure
+1. Dashboard and inventory analytics
+2. Add, view, search, update and delete medicine records
+3. Stock adjustments and stock movement history
+4. Sales checkout, invoice generation and automatic stock deduction
+5. Expiry tracking and alerts
+6. Reports and CSV exports
+7. Account registration and sign-in
 
-```text
-medical_store_inventory/
-│
-├── app.py                      # Main router & Streamlit entrypoint
-├── requirements.txt            # Python dependencies
-├── README.md                   # Installation & usage documentation
-│
-├── data/                       # CSV databases (generated automatically)
-│   ├── medicines.csv           # 100 sample medicine records
-│   ├── sales.csv               # Historical sales records
-│   └── suppliers.csv           # Registered wholesale suppliers
-│
-├── pages/                      # Page components
-│   ├── Dashboard.py            # Overview statistics & Plotly trends
-│   ├── Add_Medicine.py         # Registration portal
-│   ├── View_Medicines.py       # Inventory directory & CRUD utilities
-│   ├── Update_Stock.py         # Increase/decrease count sliders
-│   ├── Sales.py                # Transaction logs & bill printing
-│   ├── Expiry_Tracker.py       # Expired audits & CSV downloaders
-│   ├── Reports.py              # Exporting custom compliance datasets
-│   └── Settings.py             # Administrative panel & supplier directories
-│
-├── utils/                      # Business & Data Logic
-│   ├── file_handler.py         # Read/write serialization & data resets
-│   ├── analytics.py            # Math backend calculations for KPIs
-│   ├── charts.py               # Plotly figure configurations
-│   ├── validations.py          # Field syntax/value validations
-│   └── helper.py               # Sidebar templates & metric layouts
-│
-├── assets/                     # Stylistic branding assets
-│   ├── logo.png                # Vector medical brand icon
-│   └── styles.css              # Custom font injections & card rules
-│
-└── images/                     # Screenshots directory
-```
+## Tech stack
 
----
+- Python
+- Streamlit
+- SQLite
+- Pandas and NumPy
+- Plotly and Matplotlib
 
-## 🛠️ Installation & Setup
+## Run locally (Windows PowerShell)
 
-Ensure you have **Python 3.8+** installed on your Windows machine. Follow these quick steps to set up and run the system locally:
-
-### 1. Clone or Copy Workspace Files
-Ensure all project folders (`pages/`, `utils/`, `assets/`, `data/`) are in a single directory named `MediFlow_IMS`.
-
-### 2. Set Up a Virtual Environment (Recommended)
-Open VS Code terminal inside the workspace directory and execute:
 ```powershell
-# Create virtual environment
 python -m venv venv
-
-# Activate virtual environment
 .\venv\Scripts\Activate.ps1
-```
-
-### 3. Install Dependencies
-Install all package requirements automatically listed in `requirements.txt`:
-```powershell
 pip install -r requirements.txt
-```
-
-### 4. Run the Streamlit Application
-Start the server:
-```powershell
 streamlit run app.py
 ```
-This will automatically launch the browser and display the **MediFlow IMS Dashboard** on:
-`http://localhost:8501`
 
----
+Open `http://localhost:8501` in your browser and create an account. Passwords must be at least 8 characters long.
 
-## 💡 Notes for Demonstrating (Viva/Viva-Voce)
-- **Flat File DB**: Point out that the system operates completely offline without external DB services (like SQLite or MySQL), making it highly portable and simple to deploy for mini-projects.
-- **Mock Reset**: If you run out of sample stock or mess up during live demonstrations, go to **System Settings** > **Database Administration**, check the confirmation box, and click **Reset Database**. This rebuilds 100 fresh realistic medical records (with expired/low-stock/sales history) instantly.
-- **Validation Layers**: Walk the examiner through `utils/validations.py` to show code quality standards.
+## Database location and backup
 
----
+By default the SQLite database is created at `data/mediflow.db`. It is intentionally excluded from Git because it contains account and operational records. Back it up securely; do not commit it to a public repository.
 
-## 📝 Sample Data for Testing (Add Medicine)
+To use a different database path, set the `MEDIFLOW_DB_PATH` environment variable before starting Streamlit.
 
-You can copy and paste the following sample records into the **Add Medicine** form to demonstrate the dynamic inventory flow:
+## Deploying on Streamlit Community Cloud
 
-| Field | Sample 1 (Antibiotics) | Sample 2 (Antidiabetics) | Sample 3 (Analgesics) |
-| :--- | :--- | :--- | :--- |
-| **Medicine ID** | `MED101` | `MED102` | `MED103` |
-| **Medicine Name** | `Amoxicillin 500mg` | `Metformin HCl 850mg` | `Ibuprofen 400mg` |
-| **Category** | `Antibiotics` | `Antidiabetics` | `Analgesics` |
-| **Manufacturer** | `GlaxoSmithKline` | `Merck & Co.` | `Abbott Laboratories` |
-| **Batch Number** | `BCH9821` | `BCH4509` | `BCH7712` |
-| **Purchase Date** | `2026-07-16` | `2026-07-10` | `2026-07-15` |
-| **Expiry Date** | `2027-10-15` | `2028-06-30` | `2027-12-31` |
-| **Stock Quantity**| `150` | `300` | `200` |
-| **Unit Price (₹)**| `45.00` | `12.50` | `25.00` |
-| **Supplier Name** | `Apollo Pharmacy Distributors` | `MedPlus Wholesalers` | `Cipla Trade Agency` |
+The app can be deployed from this repository with `app.py` as the entry point. **Important:** Streamlit Community Cloud's local filesystem is not a durable database service. A SQLite database created inside the running app may be reset when the app is rebuilt or its instance is replaced. This SQLite setup is appropriate for local demonstrations and development. Before using the hosted app for ongoing multi-user data, move the database to a managed persistent service (for example, PostgreSQL/Supabase) and configure credentials using Streamlit Secrets. Do not enter real patient, customer or confidential pharmacy data in a public demo.
+
+## Project structure
+
+```text
+MediFlow_IMS/
+├── app.py
+├── requirements.txt
+├── assets/
+│   ├── logo.png
+│   └── styles.css
+├── data/                 # CSV import files; runtime SQLite DB is git-ignored
+├── pages/
+│   ├── Dashboard.py
+│   ├── Add_Medicine.py
+│   ├── View_Medicines.py
+│   ├── Update_Stock.py
+│   ├── Sales.py
+│   ├── Expiry_Tracker.py
+│   ├── Reports.py
+│   └── Settings.py
+└── utils/
+    ├── auth.py
+    ├── file_handler.py   # SQLite data access and CSV migration
+    ├── analytics.py
+    ├── charts.py
+    ├── helper.py
+    └── validations.py
+```
+
+## Important project scope
+
+This is an academic/demo inventory application, not a validated pharmacy dispensing or clinical decision-support system. Medicine suitability, prescriptions, patient data and regulatory workflows are outside its scope.

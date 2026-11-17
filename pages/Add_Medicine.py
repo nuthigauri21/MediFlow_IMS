@@ -41,7 +41,7 @@ with st.form("add_medicine_form", clear_on_submit=True):
         batch_number = st.text_input("Batch Number *", help="Batch manufacturing tag (e.g. BCH1082)")
         
     with col2:
-        purchase_date = st.date_input("Purchase Date *", value=datetime.date(2026, 7, 10))
+        purchase_date = st.date_input("Purchase Date *", value=datetime.date.today())
         expiry_date = st.date_input("Expiry Date *", value=datetime.date(2027, 7, 10))
         
         quantity = st.number_input("Stock Quantity *", min_value=0, value=100, step=10, help="Initial stock quantity")

@@ -1,104 +1,93 @@
+import datetime as dt
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
-import datetime
-from utils.analytics import get_kpi_metrics, get_recent_medicines
-from utils.charts import plot_category_distribution, plot_stock_by_category, plot_sales_trend
-from utils.file_handler import load_medicines, load_sales
-from utils.helper import render_metric_card, format_currency, render_styled_table
+from utils.file_handler import load_medicines, load_sales, load_stock_movements
+from utils.analytics import get_kpi_metrics
 
-# Page Title
-st.title("📊 Pharmacy Dashboard")
-st.markdown("Real-time operational summary of your pharmacy inventory and transactions.")
+st.markdown("<div class='page-eyebrow'>MEDIFLOW / OVERVIEW</div>", unsafe_allow_html=True)
+st.title("Pharmacy command center")
+st.caption(f"Inventory, sales and expiry performance · {dt.date.today().strftime('%A, %d %B %Y')}")
 
-# Load active data
-df_meds = load_medicines()
-df_sales = load_sales()
+meds = load_medicines()
+sales = load_sales()
+kpi = get_kpi_metrics()
 
-# Fetch KPIs
-kpis = get_kpi_metrics()
+# Filters apply to visual analysis without changing the underlying records.
+with st.container(border=True):
+    f1, f2 = st.columns([1, 1])
+    categories = sorted(meds["Category"].dropna().astype(str).unique()) if not meds.empty else []
+    selected_categories = f1.multiselect("Filter categories", categories, default=categories, placeholder="All categories")
+    period = f2.selectbox("Sales period", ["Last 30 days", "Last 90 days", "This year", "All time"], index=0)
 
-# ----------------- KPI Cards Grid (Row 1) -----------------
-st.markdown("### Key Performance Indicators")
-col1, col2, col3, col4 = st.columns(4)
+filtered_meds = meds[meds["Category"].isin(selected_categories)] if not meds.empty and selected_categories else (meds.iloc[0:0] if not selected_categories else meds)
+filtered_sales = sales.copy()
+if not filtered_sales.empty:
+    filtered_sales["Sale Date"] = pd.to_datetime(filtered_sales["Sale Date"], errors="coerce")
+    today = pd.Timestamp.today().normalize()
+    if period == "Last 30 days": filtered_sales = filtered_sales[filtered_sales["Sale Date"] >= today - pd.Timedelta(days=30)]
+    elif period == "Last 90 days": filtered_sales = filtered_sales[filtered_sales["Sale Date"] >= today - pd.Timedelta(days=90)]
+    elif period == "This year": filtered_sales = filtered_sales[filtered_sales["Sale Date"].dt.year == today.year]
 
-with col1:
-    st.markdown(
-        render_metric_card("Total Medicines", f"{kpis['total_medicines']}", "💊", "#0d9488"), 
-        unsafe_allow_html=True
-    )
-with col2:
-    st.markdown(
-        render_metric_card("Total Categories", f"{kpis['total_categories']}", "📂", "#3b82f6"), 
-        unsafe_allow_html=True
-    )
-with col3:
-    st.markdown(
-        render_metric_card("Total Stock Volume", f"{kpis['total_stock']:,}", "📦", "#8b5cf6"), 
-        unsafe_allow_html=True
-    )
-with col4:
-    st.markdown(
-        render_metric_card("Total Revenue", format_currency(kpis['total_revenue']), "💰", "#10b981"), 
-        unsafe_allow_html=True
-    )
+st.markdown("### At a glance")
+metrics = [
+    ("Medicine SKUs", f"{len(filtered_meds):,}", "Unique inventory records", "💊"),
+    ("Units in stock", f"{int(pd.to_numeric(filtered_meds.get('Quantity', pd.Series(dtype=float)), errors='coerce').fillna(0).sum()):,}", "Across selected categories", "📦"),
+    ("Low-stock items", f"{kpi['low_stock']:,}", "Below 20 units", "⚠️"),
+    ("Expiry attention", f"{kpi['expired'] + kpi['expiring_soon']:,}", f"{kpi['expired']} expired · {kpi['expiring_soon']} due soon", "⏳"),
+]
+cols = st.columns(4)
+for col, (label, value, hint, icon) in zip(cols, metrics):
+    with col:
+        st.markdown(f"<div class='metric-card'><div class='metric-icon'>{icon}</div><div class='metric-label'>{label}</div><div class='metric-value'>{value}</div><div class='metric-hint'>{hint}</div></div>", unsafe_allow_html=True)
 
-st.markdown("<div style='margin: 10px 0;'></div>", unsafe_allow_html=True)
+st.markdown("<div class='section-gap'></div>", unsafe_allow_html=True)
+rev = float(pd.to_numeric(filtered_sales.get("Total Amount", pd.Series(dtype=float)), errors="coerce").fillna(0).sum()) if not filtered_sales.empty else 0.0
+units_sold = int(pd.to_numeric(filtered_sales.get("Quantity Sold", pd.Series(dtype=float)), errors="coerce").fillna(0).sum()) if not filtered_sales.empty else 0
+r1, r2, r3 = st.columns(3)
+r1.metric("Revenue in selected period", f"₹{rev:,.2f}")
+r2.metric("Units sold", f"{units_sold:,}")
+r3.metric("Invoices", f"{len(filtered_sales):,}")
 
-# ----------------- KPI Cards Grid (Row 2) -----------------
-col5, col6, col7, col8 = st.columns(4)
+left, right = st.columns([1.45, 1])
+with left:
+    st.markdown("### Revenue performance")
+    if not filtered_sales.empty:
+        trend = filtered_sales.dropna(subset=["Sale Date"]).groupby("Sale Date", as_index=False)["Total Amount"].sum().sort_values("Sale Date")
+        fig = px.area(trend, x="Sale Date", y="Total Amount", markers=True, color_discrete_sequence=["#0f9d8a"])
+        fig.update_layout(height=330, margin=dict(l=8,r=8,t=18,b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", xaxis_title=None, yaxis_title="Revenue (₹)")
+        fig.update_xaxes(showgrid=False); fig.update_yaxes(gridcolor="rgba(148,163,184,.18)")
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    else: st.info("No sales found for this period.")
+with right:
+    st.markdown("### Inventory mix")
+    if not filtered_meds.empty:
+        cat = filtered_meds.groupby("Category", dropna=False)["Medicine ID"].count().reset_index(name="SKUs")
+        fig = px.pie(cat, names="Category", values="SKUs", hole=.66, color_discrete_sequence=px.colors.qualitative.Safe)
+        fig.update_layout(height=330, margin=dict(l=5,r=5,t=18,b=5), showlegend=True, legend_title=None, paper_bgcolor="rgba(0,0,0,0)")
+        fig.update_traces(textposition="inside", textinfo="percent")
+        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    else: st.info("No inventory records in this selection.")
 
-with col5:
-    st.markdown(
-        render_metric_card("Low Stock Items", f"{kpis['low_stock']}", "⚠️", "#f59e0b" if kpis['low_stock'] > 0 else "#10b981"), 
-        unsafe_allow_html=True
-    )
-with col6:
-    st.markdown(
-        render_metric_card("Expired Products", f"{kpis['expired']}", "🚨", "#ef4444" if kpis['expired'] > 0 else "#10b981"), 
-        unsafe_allow_html=True
-    )
-with col7:
-    st.markdown(
-        render_metric_card("Expiring Soon (<30d)", f"{kpis['expiring_soon']}", "⏳", "#e11d48" if kpis['expiring_soon'] > 0 else "#10b981"), 
-        unsafe_allow_html=True
-    )
-with col8:
-    st.markdown(
-        render_metric_card("Today's Sales", f"{kpis['today_sales']} ({format_currency(kpis['today_revenue'])})", "🛒", "#ec4899"), 
-        unsafe_allow_html=True
-    )
+low = filtered_meds[pd.to_numeric(filtered_meds.get("Quantity", pd.Series(dtype=float)), errors="coerce").fillna(0) < 20].copy() if not filtered_meds.empty else pd.DataFrame()
+exp = filtered_meds.copy()
+if not exp.empty:
+    exp["Expiry Date"] = pd.to_datetime(exp["Expiry Date"], errors="coerce")
+    exp = exp[exp["Expiry Date"].notna() & (exp["Expiry Date"].dt.date <= dt.date.today() + dt.timedelta(days=30))].sort_values("Expiry Date")
 
-st.markdown("---")
+st.markdown("### Needs attention")
+a, b = st.columns(2)
+with a:
+    st.markdown("**Low stock**")
+    if low.empty: st.success("No low-stock products in this category selection.")
+    else: st.dataframe(low[["Medicine ID", "Medicine Name", "Quantity", "Category"]].sort_values("Quantity"), use_container_width=True, hide_index=True)
+with b:
+    st.markdown("**Expired / expiring within 30 days**")
+    if exp.empty: st.success("No expiry alerts in this category selection.")
+    else: st.dataframe(exp[["Medicine ID", "Medicine Name", "Expiry Date", "Quantity"]], use_container_width=True, hide_index=True)
 
-# ----------------- Chart Columns -----------------
-st.markdown("### Visual Insights")
-chart_col1, chart_col2 = st.columns(2)
-
-with chart_col1:
-    fig_sales = plot_sales_trend(df_sales)
-    if fig_sales:
-        st.plotly_chart(fig_sales, use_container_width=True, theme=None)
-    else:
-        st.info("No transaction data available to plot sales trend.")
-
-with chart_col2:
-    fig_cat = plot_category_distribution(df_meds)
-    if fig_cat:
-        st.plotly_chart(fig_cat, use_container_width=True, theme=None)
-    else:
-        st.info("No medicine data available to plot categories.")
-
-# Row of category stock volumes
-fig_stock = plot_stock_by_category(df_meds)
-if fig_stock:
-    st.plotly_chart(fig_stock, use_container_width=True, theme=None)
-
-st.markdown("---")
-
-# ----------------- Recent Medicines Table -----------------
-st.markdown("### 🆕 Recently Added Medicines")
-df_recent = get_recent_medicines(5)
-
-if not df_recent.empty:
-    st.markdown(render_styled_table(df_recent), unsafe_allow_html=True)
-else:
-    st.info("No medicine inventory records found.")
+with st.expander("Recent stock movements"):
+    movements = load_stock_movements(12)
+    if movements.empty: st.info("No stock movements recorded yet.")
+    else: st.dataframe(movements, use_container_width=True, hide_index=True)

@@ -107,7 +107,7 @@ if st.session_state.authenticated:
     check_sidebar_notifications()
     st.sidebar.markdown(
         "<div style='text-align: center; color: #64748b; font-size: 0.75rem; margin-top: 20px;'>"
-        "MediFlow IMS v1.0.0<br>© 2026 MediFlow Inc."
+        "MediFlow IMS v2.0.0<br>© 2026 MediFlow Inc."
         "</div>", 
         unsafe_allow_html=True
     )
@@ -168,8 +168,8 @@ else:
                         st.error("Please fill in all fields.")
                     elif signup_password != signup_confirm:
                         st.error("Passwords do not match!")
-                    elif len(signup_password) < 6:
-                        st.error("Password must be at least 6 characters long.")
+                    elif len(signup_password) < 8:
+                        st.error("Password must be at least 8 characters long.")
                     elif "@" not in signup_email or "." not in signup_email:
                         st.error("Please enter a valid email address.")
                     else:

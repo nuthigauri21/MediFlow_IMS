@@ -24,7 +24,7 @@ report_choice = st.selectbox("Select Report to Generate", options=report_options
 
 st.markdown("---")
 
-today = datetime.date(2026, 7, 10)
+today = datetime.date.today()
 report_df = pd.DataFrame()
 report_title = ""
 report_desc = ""

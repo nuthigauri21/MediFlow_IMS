@@ -16,3 +16,10 @@ Thumbs.db
 # Local Database Credentials
 data/users.xlsx
 data/users.csv
+
+# Runtime SQLite database and local account files
+data/*.db
+data/*.db-shm
+data/*.db-wal
+data/users.csv
+data/users.xlsx

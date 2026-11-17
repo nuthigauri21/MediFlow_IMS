@@ -85,7 +85,7 @@ def check_sidebar_notifications():
     if df_meds.empty:
         return
         
-    today = datetime.date(2026, 7, 10) # Using active date context
+    today = datetime.date.today() # Using active date context
     
     # 1. Low stock count (< 20)
     low_stock_count = len(df_meds[df_meds["Quantity"] < 20])

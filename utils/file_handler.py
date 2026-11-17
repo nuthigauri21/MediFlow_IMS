@@ -1,309 +1,240 @@
-import os
-import pandas as pd
-import datetime
-import random
-from typing import Dict, List, Any, Optional
+"""SQLite-backed data layer for MediFlow IMS.
 
-# Constants for File Paths
-DATA_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data"))
+The existing CSV files are imported once into SQLite on first startup. Public
+function names and DataFrame column names remain compatible with existing pages.
+"""
+from __future__ import annotations
+import os
+import sqlite3
+from contextlib import contextmanager
+import datetime as dt
+from typing import Dict, Any
+import pandas as pd
+
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+DATA_DIR = os.path.join(BASE_DIR, "data")
+DB_PATH = os.environ.get("MEDIFLOW_DB_PATH", os.path.join(DATA_DIR, "mediflow.db"))
 MEDICINES_FILE = os.path.join(DATA_DIR, "medicines.csv")
 SALES_FILE = os.path.join(DATA_DIR, "sales.csv")
 SUPPLIERS_FILE = os.path.join(DATA_DIR, "suppliers.csv")
 
+MEDICINE_COLUMNS = ["Medicine ID", "Medicine Name", "Category", "Manufacturer", "Batch Number", "Purchase Date", "Expiry Date", "Quantity", "Unit Price", "Supplier Name"]
+SALES_COLUMNS = ["Invoice Number", "Medicine ID", "Medicine Name", "Quantity Sold", "Selling Price", "Customer Name", "Sale Date", "Total Amount"]
+SUPPLIER_COLUMNS = ["Supplier ID", "Supplier Name", "Contact Person", "Phone", "Email", "Address"]
+
+
 def ensure_directories():
-    """Ensure the data folder exists."""
-    if not os.path.exists(DATA_DIR):
-        os.makedirs(DATA_DIR)
+    os.makedirs(DATA_DIR, exist_ok=True)
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+
+
+@contextmanager
+def get_connection():
+    """Yield a configured connection and always close it after the operation."""
+    ensure_directories()
+    conn = sqlite3.connect(DB_PATH, timeout=30, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    conn.execute("PRAGMA journal_mode = WAL")
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def _table_empty(conn, table):
+    return conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0
+
 
 def init_files(reset: bool = False):
-    """Initialize CSV files with correct structures and populate with sample data if empty or reset."""
+    """Create schema and import existing CSV data once; never overwrite live data."""
     ensure_directories()
-    
-    # 1. Suppliers File
-    if reset or not os.path.exists(SUPPLIERS_FILE) or os.path.getsize(SUPPLIERS_FILE) == 0:
-        sample_suppliers = [
-            {"Supplier ID": "SUP001", "Supplier Name": "Apollo Pharmacy Distributors", "Contact Person": "Rajesh Kumar", "Phone": "9876543210", "Email": "sales@apollodist.in", "Address": "New Delhi, India"},
-            {"Supplier ID": "SUP002", "Supplier Name": "MedPlus Wholesalers", "Contact Person": "Amit Sharma", "Phone": "9876543211", "Email": "info@medpluswholesale.in", "Address": "Hyderabad, India"},
-            {"Supplier ID": "SUP003", "Supplier Name": "Cipla Trade Agency", "Contact Person": "Vikram Patel", "Phone": "9876543212", "Email": "orders@ciplatrade.in", "Address": "Mumbai, India"},
-            {"Supplier ID": "SUP004", "Supplier Name": "Sun Distributors India", "Contact Person": "Suresh Nair", "Phone": "9876543213", "Email": "support@sundistributors.in", "Address": "Chennai, India"},
-            {"Supplier ID": "SUP005", "Supplier Name": "Mankind Wholesale Services", "Contact Person": "Sanjay Deshmukh", "Phone": "9876543214", "Email": "contact@mankindwholesale.in", "Address": "Ahmedabad, India"}
-        ]
-        suppliers_df = pd.DataFrame(sample_suppliers, columns=[
-            "Supplier ID", "Supplier Name", "Contact Person", "Phone", "Email", "Address"
-        ])
-        suppliers_df.to_csv(SUPPLIERS_FILE, index=False)
-    
-    # 2. Medicines File
-    if reset or not os.path.exists(MEDICINES_FILE) or os.path.getsize(MEDICINES_FILE) == 0:
-        sample_medicines = generate_sample_medicines()
-        medicines_df = pd.DataFrame(sample_medicines, columns=[
-            "Medicine ID", "Medicine Name", "Category", "Manufacturer", 
-            "Batch Number", "Purchase Date", "Expiry Date", "Quantity", "Unit Price", "Supplier Name"
-        ])
-        medicines_df.to_csv(MEDICINES_FILE, index=False)
-        
-    # 3. Sales File
-    if reset or not os.path.exists(SALES_FILE) or os.path.getsize(SALES_FILE) == 0:
-        sample_sales = generate_sample_sales()
-        sales_df = pd.DataFrame(sample_sales, columns=[
-            "Invoice Number", "Medicine ID", "Medicine Name", 
-            "Quantity Sold", "Selling Price", "Customer Name", "Sale Date", "Total Amount"
-        ])
-        sales_df.to_csv(SALES_FILE, index=False)
+    with get_connection() as conn:
+        conn.executescript("""
+        CREATE TABLE IF NOT EXISTS medicines (
+            medicine_id TEXT PRIMARY KEY, medicine_name TEXT NOT NULL, category TEXT,
+            manufacturer TEXT, batch_number TEXT, purchase_date TEXT, expiry_date TEXT,
+            quantity INTEGER NOT NULL DEFAULT 0 CHECK(quantity >= 0),
+            unit_price REAL NOT NULL DEFAULT 0 CHECK(unit_price >= 0), supplier_name TEXT
+        );
+        CREATE TABLE IF NOT EXISTS sales (
+            invoice_number TEXT PRIMARY KEY, medicine_id TEXT, medicine_name TEXT NOT NULL,
+            quantity_sold INTEGER NOT NULL CHECK(quantity_sold > 0), selling_price REAL NOT NULL,
+            customer_name TEXT, sale_date TEXT NOT NULL, total_amount REAL NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS suppliers (
+            supplier_id TEXT PRIMARY KEY, supplier_name TEXT NOT NULL, contact_person TEXT,
+            phone TEXT, email TEXT, address TEXT
+        );
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY COLLATE NOCASE, password_hash TEXT NOT NULL,
+            email TEXT NOT NULL, signup_date TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS stock_movements (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, medicine_id TEXT NOT NULL,
+            movement_type TEXT NOT NULL, quantity_change INTEGER NOT NULL,
+            quantity_after INTEGER NOT NULL, note TEXT, created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_medicines_expiry ON medicines(expiry_date);
+        CREATE INDEX IF NOT EXISTS idx_medicines_category ON medicines(category);
+        CREATE INDEX IF NOT EXISTS idx_sales_date ON sales(sale_date);
+        """)
+        if reset:
+            for table in ("medicines", "sales", "suppliers", "stock_movements"):
+                conn.execute(f"DELETE FROM {table}")
+        # One-time legacy CSV migration. CSVs remain untouched as a backup.
+        imports = [("medicines", MEDICINES_FILE, MEDICINE_COLUMNS), ("sales", SALES_FILE, SALES_COLUMNS), ("suppliers", SUPPLIERS_FILE, SUPPLIER_COLUMNS)]
+        for table, path, columns in imports:
+            if _table_empty(conn, table) and os.path.exists(path):
+                try:
+                    df = pd.read_csv(path).reindex(columns=columns)
+                    if not df.empty:
+                        _write_frame(conn, table, df)
+                except Exception as exc:
+                    print(f"Legacy import skipped for {table}: {exc}")
+        # Migrate legacy local account files without exposing them in the repository.
+        if _table_empty(conn, "users"):
+            legacy_users = os.path.join(DATA_DIR, "users.csv")
+            legacy_excel = os.path.join(DATA_DIR, "users.xlsx")
+            old_users = None
+            try:
+                if os.path.exists(legacy_users): old_users = pd.read_csv(legacy_users)
+                elif os.path.exists(legacy_excel): old_users = pd.read_excel(legacy_excel)
+            except Exception as exc:
+                print(f"Legacy user migration skipped: {exc}")
+            if old_users is not None and not old_users.empty:
+                for _, user in old_users.iterrows():
+                    if all(k in old_users.columns for k in ("Username", "PasswordHash", "Email", "SignupDate")):
+                        conn.execute("INSERT OR IGNORE INTO users(username,password_hash,email,signup_date) VALUES(?,?,?,?)", (str(user["Username"]), str(user["PasswordHash"]), str(user["Email"]), str(user["SignupDate"])))
 
-def generate_sample_medicines() -> List[Dict[str, Any]]:
-    """Generates 100 realistic medicines, including low stock, expired, and expiring soon."""
-    categories = ["Analgesics", "Antibiotics", "Antidiabetics", "Antihypertensives", "Antivirals", "Vitamins", "Antihistamines", "Cardiovascular"]
-    manufacturers = ["Cipla", "Sun Pharma", "Dr. Reddy's", "Lupin", "Mankind Pharma", "Torrent Pharma", "Alkem Labs", "Zydus Life"]
-    suppliers = ["Apollo Pharmacy Distributors", "MedPlus Wholesalers", "Cipla Trade Agency", "Sun Distributors India", "Mankind Wholesale Services"]
-    
-    med_templates = {
-        "Analgesics": ["Crocin 650mg", "Dolo 650mg", "Combiflam", "Zerodol-SP", "Meftal-Spas", "Dynapar AQ"],
-        "Antibiotics": ["Taxim-O 200", "Augmentin 625 Duo", "Monocef-O 200", "Azithral 500", "Ciplox 500", "Sporidex 500"],
-        "Antidiabetics": ["Glycomet GP 1", "Janumet 50/500", "Galvus Met 50/500", "Ryzodeg", "Glucobay 50", "Teneliglide 20mg"],
-        "Antihypertensives": ["Telma 40", "Amlokind 5", "Cilacar 10", "Concor 5", "Minipress XL", "Moxovas 0.2"],
-        "Antivirals": ["Virovir 400", "Fabiflu 400", "Herpex 400", "Entecavir 0.5", "Viraday"],
-        "Vitamins": ["Shelcal 500", "Becosules Capsule", "Neurobion Forte", "Limcee 500mg", "Evion 400", "Zincovit"],
-        "Antihistamines": ["Allegra 120", "Avil 25", "Cetzip", "Okacet", "Montair-LC"],
-        "Cardiovascular": ["Atorva 10", "Rosuvas 10", "Clopilet 75", "Ecospirin 75", "Cardace 5", "Lipvas 20"]
+
+def _write_frame(conn, table: str, df: pd.DataFrame):
+    mapping = {
+        "medicines": dict(zip(MEDICINE_COLUMNS, ["medicine_id", "medicine_name", "category", "manufacturer", "batch_number", "purchase_date", "expiry_date", "quantity", "unit_price", "supplier_name"])),
+        "sales": dict(zip(SALES_COLUMNS, ["invoice_number", "medicine_id", "medicine_name", "quantity_sold", "selling_price", "customer_name", "sale_date", "total_amount"])),
+        "suppliers": dict(zip(SUPPLIER_COLUMNS, ["supplier_id", "supplier_name", "contact_person", "phone", "email", "address"])),
     }
-    
-    today = datetime.date(2026, 7, 10) # Set to the context time: July 10, 2026
-    med_list = []
-    
-    # We need 100 medicines
-    counter = 1
-    for category in categories:
-        templates = med_templates[category]
-        for name in templates:
-            # Create a base medicine record
-            # Generate different batches
-            for i in range(2):
-                if counter > 100:
-                    break
-                    
-                med_id = f"MED{counter:03d}"
-                batch_num = f"BCH{random.randint(1000, 9999)}"
-                
-                # Purchase Date: random date in the past 6 months
-                purchase_days_ago = random.randint(10, 180)
-                purchase_date = today - datetime.timedelta(days=purchase_days_ago)
-                
-                # Setup specific expiry scenarios to fulfill the system indicators:
-                if counter <= 10:
-                    # Expired: Expiry date was in the past (e.g. 10 to 45 days ago)
-                    expiry_date = today - datetime.timedelta(days=random.randint(10, 45))
-                elif counter <= 25:
-                    # Expiring Soon: Expiry date in the next 1 to 30 days
-                    expiry_date = today + datetime.timedelta(days=random.randint(1, 30))
-                else:
-                    # Normal Expiry: Expiry date in 6 to 24 months
-                    expiry_date = purchase_date + datetime.timedelta(days=random.randint(365, 730))
-                
-                # Setup specific stock scenarios:
-                if counter % 8 == 0:
-                    # Low stock threshold (< 20)
-                    qty = random.randint(2, 19)
-                else:
-                    qty = random.randint(50, 500)
-                    
-                price = float(random.choice([15.0, 25.0, 45.0, 80.0, 120.0, 180.0, 250.0, 320.0, 480.0]))
-                
-                med_list.append({
-                    "Medicine ID": med_id,
-                    "Medicine Name": f"{name} (B-{i+1})",
-                    "Category": category,
-                    "Manufacturer": random.choice(manufacturers),
-                    "Batch Number": batch_num,
-                    "Purchase Date": purchase_date.strftime("%Y-%m-%d"),
-                    "Expiry Date": expiry_date.strftime("%Y-%m-%d"),
-                    "Quantity": qty,
-                    "Unit Price": price,
-                    "Supplier Name": random.choice(suppliers)
-                })
-                counter += 1
-                
-    # Fill up to 100 if we are short
-    while len(med_list) < 100:
-        med_id = f"MED{counter:03d}"
-        category = random.choice(categories)
-        name = random.choice(med_templates[category])
-        batch_num = f"BCH{random.randint(1000, 9999)}"
-        purchase_date = today - datetime.timedelta(days=random.randint(10, 180))
-        expiry_date = purchase_date + datetime.timedelta(days=random.randint(365, 730))
-        qty = random.randint(50, 300)
-        price = float(random.choice([20.0, 50.0, 100.0, 150.0]))
-        
-        med_list.append({
-            "Medicine ID": med_id,
-            "Medicine Name": f"{name} Extra",
-            "Category": category,
-            "Manufacturer": random.choice(manufacturers),
-            "Batch Number": batch_num,
-            "Purchase Date": purchase_date.strftime("%Y-%m-%d"),
-            "Expiry Date": expiry_date.strftime("%Y-%m-%d"),
-            "Quantity": qty,
-            "Unit Price": price,
-            "Supplier Name": random.choice(suppliers)
-        })
-        counter += 1
-        
-    return med_list
+    clean = df.copy().rename(columns=mapping[table])
+    clean = clean.where(pd.notna(clean), None)
+    clean.to_sql(table, conn, if_exists="append", index=False)
 
-def generate_sample_sales() -> List[Dict[str, Any]]:
-    """Generates a small history of sales for visual graphs."""
-    today = datetime.date(2026, 7, 10)
-    sales = []
-    
-    # 20 sales over the last 15 days
-    med_list = [
-        ("MED011", "Augmentin 625 Duo (B-1)", 120.0),
-        ("MED035", "Amlokind 5 (B-1)", 45.0),
-        ("MED052", "Limcee 500mg (B-2)", 15.0),
-        ("MED067", "Atorva 10 (B-1)", 80.0),
-        ("MED081", "Glycomet GP 1 Extra", 50.0)
-    ]
-    
-    customers = ["Rahul Sharma", "Priya Sharma", "Amit Patel", "Vikram Singh", "Sunita Rao", "Ramesh Verma", "Deepa Gupta", "Suresh Nair", "Neha Deshmukh", "Sanjay Joshi"]
-    
-    for i in range(1, 35):
-        days_ago = random.randint(0, 14)
-        sale_date = today - datetime.timedelta(days=days_ago)
-        
-        med = random.choice(med_list)
-        qty_sold = random.randint(1, 5)
-        price = med[2]
-        total_amt = qty_sold * price
-        
-        sales.append({
-            "Invoice Number": f"INV{1000 + i}",
-            "Medicine ID": med[0],
-            "Medicine Name": med[1],
-            "Quantity Sold": qty_sold,
-            "Selling Price": price,
-            "Customer Name": random.choice(customers),
-            "Sale Date": sale_date.strftime("%Y-%m-%d"),
-            "Total Amount": total_amt
-        })
-        
-    # Sort sales by date ascending
-    sales.sort(key=lambda x: x["Sale Date"])
-    return sales
 
-# Load / Save Operations
-def load_csv(file_path: str) -> pd.DataFrame:
-    """Loads a CSV file into a DataFrame, ensuring it exists first."""
+def _load(table: str, columns: list[str]) -> pd.DataFrame:
+    init_files()
+    with get_connection() as conn:
+        df = pd.read_sql_query(f"SELECT * FROM {table}", conn)
+    reverse = {
+        "medicines": dict(zip(["medicine_id", "medicine_name", "category", "manufacturer", "batch_number", "purchase_date", "expiry_date", "quantity", "unit_price", "supplier_name"], MEDICINE_COLUMNS)),
+        "sales": dict(zip(["invoice_number", "medicine_id", "medicine_name", "quantity_sold", "selling_price", "customer_name", "sale_date", "total_amount"], SALES_COLUMNS)),
+        "suppliers": dict(zip(["supplier_id", "supplier_name", "contact_person", "phone", "email", "address"], SUPPLIER_COLUMNS)),
+    }
+    if df.empty:
+        return pd.DataFrame(columns=columns)
+    df = df.rename(columns=reverse[table]).reindex(columns=columns)
+    for col in ("Quantity", "Quantity Sold"):
+        if col in df: df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0).astype(int)
+    for col in ("Unit Price", "Selling Price", "Total Amount"):
+        if col in df: df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
+    return df
+
+
+def _save(table: str, df: pd.DataFrame, columns: list[str], key_col: str) -> bool:
+    try:
+        init_files()
+        with get_connection() as conn:
+            conn.execute(f"DELETE FROM {table}")
+            if not df.empty: _write_frame(conn, table, df.reindex(columns=columns))
+        return True
+    except Exception as exc:
+        print(f"Database save failed for {table}: {exc}")
+        return False
+
+
+def load_medicines(): return _load("medicines", MEDICINE_COLUMNS)
+def save_medicines(df): return _save("medicines", df, MEDICINE_COLUMNS, "Medicine ID")
+def load_sales(): return _load("sales", SALES_COLUMNS)
+def save_sales(df): return _save("sales", df, SALES_COLUMNS, "Invoice Number")
+def load_suppliers(): return _load("suppliers", SUPPLIER_COLUMNS)
+def save_suppliers(df): return _save("suppliers", df, SUPPLIER_COLUMNS, "Supplier ID")
+
+
+def add_medicine(data: Dict[str, Any]) -> bool:
     init_files()
     try:
-        return pd.read_csv(file_path)
-    except Exception as e:
-        print(f"Error loading CSV {file_path}: {e}")
-        return pd.DataFrame()
-
-def save_csv(df: pd.DataFrame, file_path: str) -> bool:
-    """Saves a DataFrame to a CSV file."""
-    try:
-        df.to_csv(file_path, index=False)
+        row = {"Medicine ID": data.get("Medicine ID"), **data}
+        with get_connection() as conn:
+            conn.execute("INSERT INTO medicines VALUES (?,?,?,?,?,?,?,?,?,?)", tuple(row.get(c) for c in ["Medicine ID", "Medicine Name", "Category", "Manufacturer", "Batch Number", "Purchase Date", "Expiry Date", "Quantity", "Unit Price", "Supplier Name"]))
+            conn.execute("INSERT INTO stock_movements(medicine_id,movement_type,quantity_change,quantity_after,note,created_at) VALUES(?,?,?,?,?,?)", (row["Medicine ID"], "OPENING", int(row.get("Quantity",0)), int(row.get("Quantity",0)), "Initial inventory", dt.datetime.now().isoformat(timespec="seconds")))
         return True
-    except Exception as e:
-        print(f"Error saving CSV {file_path}: {e}")
-        return False
+    except Exception as exc:
+        print(f"Add medicine failed: {exc}"); return False
 
-# Database Specific Callers
-def load_medicines() -> pd.DataFrame:
-    return load_csv(MEDICINES_FILE)
-
-def save_medicines(df: pd.DataFrame) -> bool:
-    return save_csv(df, MEDICINES_FILE)
-
-def load_sales() -> pd.DataFrame:
-    return load_csv(SALES_FILE)
-
-def save_sales(df: pd.DataFrame) -> bool:
-    return save_csv(df, SALES_FILE)
-
-def load_suppliers() -> pd.DataFrame:
-    return load_csv(SUPPLIERS_FILE)
-
-def save_suppliers(df: pd.DataFrame) -> bool:
-    return save_csv(df, SUPPLIERS_FILE)
-
-# C.R.U.D. Operations for Medicines
-def add_medicine(data: Dict[str, Any]) -> bool:
-    """Adds a new medicine to medicines.csv."""
-    df = load_medicines()
-    if data["Medicine ID"] in df["Medicine ID"].values:
-        return False # Duplicate ID
-    
-    new_row = pd.DataFrame([data])
-    df = pd.concat([df, new_row], ignore_index=True)
-    return save_medicines(df)
 
 def update_medicine(med_id: str, data: Dict[str, Any]) -> bool:
-    """Updates an existing medicine details."""
-    df = load_medicines()
-    if med_id not in df["Medicine ID"].values:
-        return False
-    
-    # Locate index
-    idx = df[df["Medicine ID"] == med_id].index[0]
-    for key, val in data.items():
-        if key in df.columns:
-            df.at[idx, key] = val
-            
-    return save_medicines(df)
+    init_files()
+    allowed = {"Medicine Name":"medicine_name", "Category":"category", "Manufacturer":"manufacturer", "Batch Number":"batch_number", "Purchase Date":"purchase_date", "Expiry Date":"expiry_date", "Quantity":"quantity", "Unit Price":"unit_price", "Supplier Name":"supplier_name"}
+    fields = [(allowed[k], v) for k,v in data.items() if k in allowed]
+    if not fields: return False
+    try:
+        with get_connection() as conn:
+            cur = conn.execute("UPDATE medicines SET " + ",".join(f"{k}=?" for k,_ in fields) + " WHERE medicine_id=?", [v for _,v in fields]+[med_id])
+            return cur.rowcount > 0
+    except Exception as exc:
+        print(f"Update medicine failed: {exc}"); return False
+
 
 def delete_medicine(med_id: str) -> bool:
-    """Deletes a medicine from the inventory."""
-    df = load_medicines()
-    if med_id not in df["Medicine ID"].values:
-        return False
-    
-    df = df[df["Medicine ID"] != med_id]
-    return save_medicines(df)
+    init_files()
+    try:
+        with get_connection() as conn:
+            cur = conn.execute("DELETE FROM medicines WHERE medicine_id=?", (med_id,))
+            return cur.rowcount > 0
+    except Exception as exc:
+        print(f"Delete medicine failed: {exc}"); return False
+
 
 def update_stock(med_id: str, qty_change: int, set_absolute: bool = False) -> bool:
-    """Increases, decreases, or sets absolute stock for a medicine."""
-    df = load_medicines()
-    if med_id not in df["Medicine ID"].values:
-        return False
-    
-    idx = df[df["Medicine ID"] == med_id].index[0]
-    current_qty = int(df.at[idx, "Quantity"])
-    
-    if set_absolute:
-        new_qty = qty_change
-    else:
-        new_qty = current_qty + qty_change
-        
-    if new_qty < 0:
-        return False # Cannot have negative stock
-        
-    df.at[idx, "Quantity"] = new_qty
-    return save_medicines(df)
+    init_files()
+    try:
+        with get_connection() as conn:
+            row = conn.execute("SELECT quantity FROM medicines WHERE medicine_id=?", (med_id,)).fetchone()
+            if not row: return False
+            old = int(row["quantity"]); new = int(qty_change) if set_absolute else old + int(qty_change)
+            if new < 0: return False
+            conn.execute("UPDATE medicines SET quantity=? WHERE medicine_id=?", (new, med_id))
+            delta = new-old
+            if delta:
+                conn.execute("INSERT INTO stock_movements(medicine_id,movement_type,quantity_change,quantity_after,note,created_at) VALUES(?,?,?,?,?,?)", (med_id, "ADJUSTMENT", delta, new, "Manual stock adjustment", dt.datetime.now().isoformat(timespec="seconds")))
+        return True
+    except Exception as exc:
+        print(f"Stock update failed: {exc}"); return False
 
-# Sales Logging
+
 def record_sale(sale_data: Dict[str, Any]) -> bool:
-    """Records a sale invoice and decreases stock accordingly."""
-    df_sales = load_sales()
-    
-    # 1. Reduce Stock first
-    success = update_stock(sale_data["Medicine ID"], -int(sale_data["Quantity Sold"]))
-    if not success:
-        return False # Not enough stock or ID not found
-        
-    # 2. Append to sales sheet
-    new_sale = pd.DataFrame([sale_data])
-    df_sales = pd.concat([df_sales, new_sale], ignore_index=True)
-    return save_sales(df_sales)
+    init_files()
+    try:
+        with get_connection() as conn:
+            med = conn.execute("SELECT medicine_name, quantity FROM medicines WHERE medicine_id=?", (sale_data["Medicine ID"],)).fetchone()
+            if not med or int(med["quantity"]) < int(sale_data["Quantity Sold"]): return False
+            conn.execute("INSERT INTO sales VALUES(?,?,?,?,?,?,?,?)", (sale_data["Invoice Number"], sale_data["Medicine ID"], sale_data.get("Medicine Name", med["medicine_name"]), int(sale_data["Quantity Sold"]), float(sale_data["Selling Price"]), sale_data.get("Customer Name", "Walk-in Customer"), sale_data["Sale Date"], float(sale_data["Total Amount"])))
+            new_qty = int(med["quantity"]) - int(sale_data["Quantity Sold"])
+            conn.execute("UPDATE medicines SET quantity=? WHERE medicine_id=?", (new_qty, sale_data["Medicine ID"]))
+            conn.execute("INSERT INTO stock_movements(medicine_id,movement_type,quantity_change,quantity_after,note,created_at) VALUES(?,?,?,?,?,?)", (sale_data["Medicine ID"], "SALE", -int(sale_data["Quantity Sold"]), new_qty, f"Invoice {sale_data['Invoice Number']}", dt.datetime.now().isoformat(timespec="seconds")))
+        return True
+    except Exception as exc:
+        print(f"Sale transaction failed: {exc}"); return False
 
-# Resets
+
+def load_stock_movements(limit: int = 100) -> pd.DataFrame:
+    init_files()
+    with get_connection() as conn:
+        return pd.read_sql_query("SELECT medicine_id AS 'Medicine ID', movement_type AS 'Movement', quantity_change AS 'Quantity Change', quantity_after AS 'Quantity After', note AS 'Note', created_at AS 'Date' FROM stock_movements ORDER BY id DESC LIMIT ?", conn, params=(limit,))
+
+
 def reset_database() -> bool:
-    """Clears and rebuilds the CSV tables to their default state."""
     init_files(reset=True)
     return True
-
-if __name__ == "__main__":
-    print("Initializing Database CSV files...")
-    init_files(reset=True)
-    print("Database directories and dummy data files successfully initialized!")

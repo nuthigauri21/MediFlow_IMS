@@ -62,7 +62,7 @@ else:
             filtered_df = filtered_df[filtered_df["Manufacturer"] == selected_mfr]
             
         # 4. Expiry Filter
-        today = datetime.date(2026, 7, 10)
+        today = datetime.date.today()
         if selected_exp != "All":
             expiry_statuses = []
             for idx, row in filtered_df.iterrows():

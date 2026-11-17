@@ -341,3 +341,17 @@ button[role="switch"]:hover > div:first-of-type {
     border-color: #000000 !important;
 }
 
+
+/* MediFlow IMS redesign - dashboard surfaces */
+.page-eyebrow{font-size:.72rem;font-weight:800;letter-spacing:.16em;color:#0f9d8a;margin-bottom:.25rem;text-transform:uppercase}
+.metric-card{position:relative;min-height:148px;padding:1.15rem 1.2rem;border:1px solid var(--card-border);border-radius:18px;background:var(--card-bg);box-shadow:0 8px 24px rgba(15,23,42,.06);overflow:hidden}
+.metric-icon{font-size:1.35rem;margin-bottom:.6rem}
+.metric-label{font-size:.82rem;font-weight:650;color:var(--text-secondary)}
+.metric-value{font-size:2rem;font-weight:800;line-height:1.25;letter-spacing:-.04em;color:var(--text-primary);margin:.15rem 0}
+.metric-hint{font-size:.72rem;color:var(--text-secondary)}
+.section-gap{height:1.1rem}
+[data-testid="stMetric"]{border:1px solid var(--card-border);border-radius:14px;padding:.75rem 1rem;background:var(--card-bg)}
+[data-testid="stDataFrame"]{border:1px solid var(--card-border);border-radius:12px;overflow:hidden}
+[data-testid="stSidebar"]{border-right:1px solid var(--sidebar-border)}
+button[kind="primary"]{border-radius:10px;font-weight:700}
+@media(max-width:760px){.metric-card{min-height:125px;padding:.9rem}.metric-value{font-size:1.55rem}}

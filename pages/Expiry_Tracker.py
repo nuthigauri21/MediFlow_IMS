@@ -12,7 +12,7 @@ df_meds = load_medicines()
 if df_meds.empty:
     st.info("No medicine inventory records found.")
 else:
-    today = datetime.date(2026, 7, 10)
+    today = datetime.date.today()
     
     # Pre-parse dates for sorting and comparison
     df_meds["_Expiry_Date_Obj"] = pd.to_datetime(df_meds["Expiry Date"]).dt.date

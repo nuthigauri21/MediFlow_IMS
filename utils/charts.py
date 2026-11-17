@@ -152,7 +152,7 @@ def plot_expiry_status_pie(df_meds: pd.DataFrame) -> Optional[go.Figure]:
     if df_meds.empty:
         return None
         
-    today = datetime.date(2026, 7, 10)
+    today = datetime.date.today()
     
     statuses = []
     for idx, row in df_meds.iterrows():

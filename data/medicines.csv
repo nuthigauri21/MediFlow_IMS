@@ -1,4 +1,5 @@
 Medicine ID,Medicine Name,Category,Manufacturer,Batch Number,Purchase Date,Expiry Date,Quantity,Unit Price,Supplier Name
+MED001,Crocin 650mg (B-1),Analgesics,Sun Pharma,BCH9431,2026-05-17,2026-06-10,453,250.0,Cipla Trade Agency
 MED002,Crocin 650mg (B-2),Analgesics,Alkem Labs,BCH4487,2026-02-09,2026-06-07,156,15.0,Mankind Wholesale Services
 MED003,Dolo 650mg (B-1),Analgesics,Alkem Labs,BCH7996,2026-01-26,2026-05-29,248,25.0,Cipla Trade Agency
 MED004,Dolo 650mg (B-2),Analgesics,Dr. Reddy's,BCH4809,2026-03-26,2026-06-19,178,15.0,Sun Distributors India

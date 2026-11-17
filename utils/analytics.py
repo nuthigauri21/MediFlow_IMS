@@ -8,7 +8,7 @@ def get_kpi_metrics() -> Dict[str, Any]:
     df_meds = load_medicines()
     df_sales = load_sales()
     
-    today = datetime.date(2026, 7, 10) # Set to the user's current date
+    today = datetime.date.today() # Set to the user's current date
     today_str = today.strftime("%Y-%m-%d")
     
     # 1. Total Medicines & Categories
