@@ -1,6 +1,7 @@
 import streamlit as st
 import datetime
 import pandas as pd
+import matplotlib.pyplot as plt
 from utils.file_handler import load_medicines, load_sales
 from utils.helper import render_styled_table
 
@@ -102,6 +103,19 @@ else:
         format_rules["Total_Inventory_Value"] = lambda x: f"₹{x:.2f}"
         
     st.markdown(render_styled_table(report_df), unsafe_allow_html=True)
+
+    # Matplotlib visualization for the selected report when it contains categories.
+    if report_choice == "Category-wise Stock Distribution" and not report_df.empty:
+        chart_data = report_df.sort_values("Total_Stock_Quantity", ascending=True)
+        fig, ax = plt.subplots(figsize=(9, max(3, 0.45 * len(chart_data))))
+        ax.barh(chart_data["Category"].astype(str), chart_data["Total_Stock_Quantity"])
+        ax.set_title("Stock quantity by medicine category")
+        ax.set_xlabel("Units in stock")
+        ax.set_ylabel("Category")
+        ax.grid(axis="x", alpha=0.2)
+        fig.tight_layout()
+        st.pyplot(fig, use_container_width=True)
+        plt.close(fig)
     
     # Download button
     csv = report_df.to_csv(index=False)

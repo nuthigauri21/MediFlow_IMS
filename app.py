@@ -3,7 +3,7 @@ from utils.file_handler import init_files
 from utils.helper import inject_custom_css, render_sidebar_branding, check_sidebar_notifications
 from utils.auth import authenticate_user, register_user
 
-# Initialize database CSVs and generate sample data
+# Ensure required CSV data files exist
 init_files()
 
 # Initialize session state for theme

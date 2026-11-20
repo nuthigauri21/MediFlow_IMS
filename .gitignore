@@ -1,25 +1,18 @@
-# Virtual Environment
+# Python environments
 venv/
 .venv/
 ENV/
 
-# Python Cache
+# Python cache
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
 
-# Operating System Files
+# Local account and operational data
+data/users.csv
+data/stock_movements.csv
+data/*.tmp
+
+# OS/editor files
 .DS_Store
 Thumbs.db
-
-# Local Database Credentials
-data/users.xlsx
-data/users.csv
-
-# Runtime SQLite database and local account files
-data/*.db
-data/*.db-shm
-data/*.db-wal
-data/users.csv
-data/users.xlsx
+.vscode/

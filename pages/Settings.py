@@ -4,9 +4,9 @@ from utils.file_handler import reset_database, load_suppliers, save_suppliers
 from utils.helper import render_styled_table
 
 st.title("⚙️ System Settings & Tools")
-st.markdown("Configure system parameters, manage supplier details, and perform database resets.")
+st.markdown("Configure system parameters, manage supplier details, and maintain local CSV data.")
 
-tab1, tab2, tab3 = st.tabs(["🤝 Suppliers Directory", "🚨 Database Administration", "ℹ️ System Info"])
+tab1, tab2, tab3 = st.tabs(["🤝 Suppliers Directory", "🚨 CSV Data Administration", "ℹ️ System Info"])
 
 # ----------------- Tab 1: Supplier Directory -----------------
 with tab1:
@@ -59,23 +59,23 @@ with tab1:
 
 # ----------------- Tab 2: Database Administration -----------------
 with tab2:
-    st.subheader("Database Backups & Reset")
+    st.subheader("CSV Data Reset")
     st.warning(
-        "⚠️ **CRITICAL WARNING**: Resetting the database will overwrite all your medicines, sales invoices, "
-        "and supplier files with default sample records. All your customized inputs will be permanently lost."
+        "⚠️ **CRITICAL WARNING**: This clears the medicine, sales and stock-movement CSV files. "
+        "Export or back up your data folder before continuing. Supplier and account files are not cleared."
     )
     
-    confirm_reset = st.checkbox("I understand the consequences and wish to completely reset the system data.")
-    reset_btn = st.button("🚨 Reset Database to Default State", type="primary")
+    confirm_reset = st.checkbox("I understand this will clear medicine, sales and stock movement records.")
+    reset_btn = st.button("🚨 Clear Inventory & Sales Data", type="primary")
     
     if reset_btn:
         if confirm_reset:
-            with st.spinner("Rebuilding database records..."):
+            with st.spinner("Clearing CSV records..."):
                 if reset_database():
-                    st.success("✅ Database reset complete. Streamlit application will now refresh!")
+                    st.success("✅ CSV data reset complete. Streamlit application will now refresh!")
                     st.rerun()
                 else:
-                    st.error("❌ Database reset failed. Verify file system write permissions.")
+                    st.error("❌ CSV reset failed. Verify file system write permissions.")
         else:
             st.error("⚠️ Please confirm by checking the safety checkbox before running a reset.")
 
@@ -87,7 +87,7 @@ with tab3:
         - **System Name**: MediFlow IMS
         - **Project Type**: Degree College Mini Project
         - **OS Compatibility**: Windows 10/11, macOS, Linux
-        - **Core Stack**: Python, Streamlit, Pandas, Plotly
+        - **Core Stack**: Python, Streamlit, Pandas, Matplotlib, Plotly
         - **Data Store**: Flat File CSV (Multi-table)
         - **Framework Version**: Streamlit 1.35+ Page Navigation Router
         

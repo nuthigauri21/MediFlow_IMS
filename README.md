@@ -1,56 +1,28 @@
-# MediFlow IMS — Pharmacy Inventory & Management System
+# MediFlow IMS — Medicine Inventory Management
 
-A Python + Streamlit inventory application for managing medicine records, stock levels, expiry dates, sales and operational reporting.
-
-## Redesigned release
-
-This release retains the existing Streamlit application and its modules while upgrading the data layer and dashboard:
-
-- **SQLite database** for structured medicine, sales, supplier, user and stock-movement records.
-- **One-time CSV migration**: existing `data/medicines.csv`, `data/sales.csv` and `data/suppliers.csv` are imported into SQLite on first run when the corresponding database table is empty. Original CSVs are kept as import backups.
-- **Transactional sales**: a sale, stock deduction and stock-movement record are committed together, preventing partial transactions.
-- **Password security**: new accounts use salted PBKDF2-HMAC-SHA256 password hashes. Legacy SHA-256 account hashes are upgraded after a successful login.
-- **Dashboard refresh**: KPI cards, date/category filters, sales trend, category mix, low-stock and expiry attention tables, and recent stock movements.
-- **Dynamic dates**: expiry and sales views use the current system date instead of a fixed demo date.
+MediFlow IMS is a Python-based medicine inventory management application built with Streamlit. It helps maintain medicine records, monitor stock quantities and expiry dates, record sales, and generate inventory reports.
 
 ## Features
 
-1. Dashboard and inventory analytics
-2. Add, view, search, update and delete medicine records
-3. Stock adjustments and stock movement history
-4. Sales checkout, invoice generation and automatic stock deduction
-5. Expiry tracking and alerts
-6. Reports and CSV exports
-7. Account registration and sign-in
+- **Medicine records (CRUD):** add, view, search, edit/update and delete medicine records.
+- **CSV-based storage:** medicine, sales, supplier, user and stock-movement records are stored as CSV files under `data/`; Pandas is used to read, validate, transform and write tabular data.
+- **Stock monitoring:** manual stock adjustments, low-stock identification and a recent stock movement log.
+- **Expiry tracking:** identify expired medicines and medicines approaching their expiry date.
+- **Dashboard analytics:** inventory KPIs, category distribution, sales/revenue trend, low-stock and expiry attention tables.
+- **Sales & invoicing:** record sales, calculate invoice totals and automatically reduce available stock.
+- **Reports:** preview and download inventory, low-stock, expiry, sales and category reports as CSV. Category stock reports include a Matplotlib visualization.
+- **Interactive visualizations:** Plotly charts for dashboard inventory and sales analysis.
+- **Account access:** account registration and sign-in with salted PBKDF2-SHA256 password hashes. Password hashes are stored in the local `users.csv` file, not as plain text.
+- **Responsive interface:** organized Streamlit navigation and dark/light theme support.
 
-## Tech stack
+## Technology stack
 
-- Python
+- Python 3.10+
 - Streamlit
-- SQLite
-- Pandas and NumPy
-- Plotly and Matplotlib
-
-## Run locally (Windows PowerShell)
-
-```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-streamlit run app.py
-```
-
-Open `http://localhost:8501` in your browser and create an account. Passwords must be at least 8 characters long.
-
-## Database location and backup
-
-By default the SQLite database is created at `data/mediflow.db`. It is intentionally excluded from Git because it contains account and operational records. Back it up securely; do not commit it to a public repository.
-
-To use a different database path, set the `MEDIFLOW_DB_PATH` environment variable before starting Streamlit.
-
-## Deploying on Streamlit Community Cloud
-
-The app can be deployed from this repository with `app.py` as the entry point. **Important:** Streamlit Community Cloud's local filesystem is not a durable database service. A SQLite database created inside the running app may be reset when the app is rebuilt or its instance is replaced. This SQLite setup is appropriate for local demonstrations and development. Before using the hosted app for ongoing multi-user data, move the database to a managed persistent service (for example, PostgreSQL/Supabase) and configure credentials using Streamlit Secrets. Do not enter real patient, customer or confidential pharmacy data in a public demo.
+- Pandas
+- Matplotlib
+- Plotly
+- CSV file storage
 
 ## Project structure
 
@@ -58,10 +30,17 @@ The app can be deployed from this repository with `app.py` as the entry point. *
 MediFlow_IMS/
 ├── app.py
 ├── requirements.txt
+├── README.md
+├── commands.txt
 ├── assets/
 │   ├── logo.png
 │   └── styles.css
-├── data/                 # CSV import files; runtime SQLite DB is git-ignored
+├── data/
+│   ├── medicines.csv
+│   ├── sales.csv
+│   ├── suppliers.csv
+│   ├── users.csv                 # generated locally; ignored by Git
+│   └── stock_movements.csv       # generated locally; ignored by Git
 ├── pages/
 │   ├── Dashboard.py
 │   ├── Add_Medicine.py
@@ -73,13 +52,45 @@ MediFlow_IMS/
 │   └── Settings.py
 └── utils/
     ├── auth.py
-    ├── file_handler.py   # SQLite data access and CSV migration
+    ├── file_handler.py
     ├── analytics.py
     ├── charts.py
     ├── helper.py
     └── validations.py
 ```
 
-## Important project scope
+## Run locally (Windows PowerShell)
 
-This is an academic/demo inventory application, not a validated pharmacy dispensing or clinical decision-support system. Medicine suitability, prescriptions, patient data and regulatory workflows are outside its scope.
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+Open `http://localhost:8501`, choose **Create Account**, register, and then sign in. Passwords must contain at least 8 characters.
+
+## CSV data files
+
+The app creates `users.csv` and `stock_movements.csv` on first launch. The supplied medicine, sales and supplier CSV files provide demonstration data. You can back up the `data` folder to preserve local records. Do not commit `users.csv` or real business/customer information to a public repository.
+
+CSV files are suitable for a lightweight academic demonstration and single-user/local workflows. They do not provide database transactions or safe concurrent multi-user writes. For production use, migrate operational data to a managed database and add role-based access, audit controls and backups. Streamlit Community Cloud's local filesystem may be reset when an app is rebuilt or its instance is replaced; therefore, this demo should not be used as a durable production data store. Do not enter real patient or confidential pharmacy information.
+
+## Deployment on Streamlit Community Cloud
+
+1. Push the complete project folder to a GitHub repository.
+2. In Streamlit Community Cloud, create an app from that repository.
+3. Select branch `main` and entry point `app.py`.
+4. Deploy. The dependencies are installed from `requirements.txt`.
+5. Open the deployed app and create a new account.
+
+If the hosted app is restarted or rebuilt, local CSV data may not persist. Use a managed persistent database/storage service for real deployment.
+
+## Resume alignment
+
+This implementation demonstrates the project scope described in the resume: Python and Streamlit application development, CSV-based CRUD operations, stock and expiry tracking, and inventory visualizations/reports using Pandas, Matplotlib and Plotly.
+
+## Scope note
+
+This is an academic/demo inventory management project, not a validated pharmacy dispensing or clinical decision-support system. It does not make clinical recommendations or validate prescriptions.

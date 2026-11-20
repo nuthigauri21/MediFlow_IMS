@@ -1,20 +1,29 @@
-MediFlow IMS - Setup Instructions
+MEDIFLOW IMS - SETUP & RUN COMMANDS
 
-1. Create a virtual environment (first setup only)
-   python -m venv venv
+1. Open PowerShell in the MediFlow_IMS project folder.
 
-2. Activate the virtual environment (Windows PowerShell)
-   .\venv\Scripts\Activate.ps1
+2. Create a virtual environment (first time only):
+   python -m venv .venv
 
-3. Install dependencies
+3. Activate the environment:
+   .\.venv\Scripts\Activate.ps1
+
+4. Install project dependencies:
+   python -m pip install --upgrade pip
    pip install -r requirements.txt
 
-4. Start the application
+5. Run the Streamlit application:
    streamlit run app.py
 
-5. Open the local application
-   http://localhost:8501
+6. Open the local URL shown in the terminal (normally http://localhost:8501).
 
-Create an account from the Sign In page. Passwords must be at least 8 characters.
-The SQLite database is created automatically at data/mediflow.db.
-Press CTRL+C in the terminal to stop the server.
+7. On first launch, choose Create Account, register a username/email/password,
+   then return to Sign In. Passwords must contain at least 8 characters.
+
+DATA STORAGE:
+- Medicine, sales and supplier data are stored in CSV files in data/.
+- users.csv and stock_movements.csv are created automatically on first run.
+- Back up the data folder regularly for local use.
+- Do not commit users.csv or confidential operational data to GitHub.
+
+To stop the server, press CTRL+C in the terminal.

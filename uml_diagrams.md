@@ -89,7 +89,7 @@ graph LR
 
 ## 2. Activity Diagram (Sales Transaction Flow)
 
-This diagram tracks the behavioral control flow within the **Sales & Invoicing Module** (`Sales.py`). It highlights validation checkpoints, error states, database writes, and billing updates.
+This diagram tracks the behavioral control flow within the **Sales & Invoicing Module** (`Sales.py`). It highlights validation checkpoints, error states, CSV file writes, and billing updates.
 
 ### Mermaid Diagram
 
@@ -270,12 +270,12 @@ graph TB
         UpdateStock["Update_Stock.py (Stock Adjustments)"]
         Sales["Sales.py (Invoicing & Checkout)"]
         Expiry["Expiry_Tracker.py (Compliance Audits)"]
-        Reports["Reports.py (Excel/CSV Export Hub)"]
-        Settings["Settings.py (DB Admin & Supplier Panel)"]
+        Reports["Reports.py (CSV Export Hub)"]
+        Settings["Settings.py (CSV Data Admin & Supplier Panel)"]
     end
 
     subgraph Business_Logic ["⚙️ Utilities / Business Logic Layer"]
-        auth["auth.py (SHA-256 Auth Controller)"]
+        auth["auth.py (PBKDF2-SHA256 Auth Controller)"]
         validations["validations.py (Form Validations)"]
         analytics["analytics.py (KPI Math Calculators)"]
         charts["charts.py (Plotly Charts Engine)"]
@@ -283,11 +283,11 @@ graph TB
         file_handler["file_handler.py (File Serialization Handler)"]
     end
 
-    subgraph Data_Layer ["💾 Database Layer (Flat-Files)"]
+    subgraph Data_Layer ["💾 CSV Data Layer (Flat-Files)"]
         medicines["medicines.csv"]
         sales_data["sales.csv"]
         suppliers["suppliers.csv"]
-        users["users.csv / users.xlsx"]
+        users["users.csv"]
     end
 
     subgraph Assets_Layer ["💅 Assets Layer"]
@@ -354,7 +354,7 @@ sequenceDiagram
     participant UI as Add_Medicine.py (Form UI)
     participant VAL as validations.py (Validation Engine)
     participant FH as file_handler.py (File Handler)
-    participant CSV as medicines.csv (Database File)
+    participant CSV as medicines.csv (CSV File)
 
     Pharmacist->>UI: Fills Medicine Details & Clicks 'Add Medicine'
     activate UI
