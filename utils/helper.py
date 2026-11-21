@@ -67,7 +67,7 @@ def render_sidebar_branding():
     
     st.sidebar.markdown("<div style='text-align: center;'>", unsafe_allow_html=True)
     if os.path.exists(logo_path):
-        st.sidebar.image(logo_path, use_container_width=True)
+        st.sidebar.image(logo_path, width="stretch")
     else:
         # Fallback text if logo image load fails
         st.sidebar.markdown("<h2 style='color:#0d9488;'>💊 MediFlow</h2>", unsafe_allow_html=True)
