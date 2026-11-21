@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from utils.file_handler import load_medicines, load_sales, load_stock_movements
 from utils.analytics import get_kpi_metrics
+from utils.charts import *
 
 st.markdown("<div class='page-eyebrow'>MEDIFLOW / OVERVIEW</div>", unsafe_allow_html=True)
 st.title("Pharmacy command center")
