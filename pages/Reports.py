@@ -114,7 +114,7 @@ else:
         ax.set_ylabel("Category")
         ax.grid(axis="x", alpha=0.2)
         fig.tight_layout()
-        st.pyplot(fig, use_container_width=True)
+        st.pyplot(fig, width="stretch")
         plt.close(fig)
     
     # Download button
@@ -126,5 +126,5 @@ else:
         data=csv,
         file_name=f"{report_title}_{timestamp}.csv",
         mime="text/csv",
-        use_container_width=True
+        width="stretch"
     )

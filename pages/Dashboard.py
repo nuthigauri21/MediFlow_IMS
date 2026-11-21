@@ -81,13 +81,13 @@ a, b = st.columns(2)
 with a:
     st.markdown("**Low stock**")
     if low.empty: st.success("No low-stock products in this category selection.")
-    else: st.dataframe(low[["Medicine ID", "Medicine Name", "Quantity", "Category"]].sort_values("Quantity"), use_container_width=True, hide_index=True)
+    else: st.dataframe(low[["Medicine ID", "Medicine Name", "Quantity", "Category"]].sort_values("Quantity"), width="stretch", hide_index=True)
 with b:
     st.markdown("**Expired / expiring within 30 days**")
     if exp.empty: st.success("No expiry alerts in this category selection.")
-    else: st.dataframe(exp[["Medicine ID", "Medicine Name", "Expiry Date", "Quantity"]], use_container_width=True, hide_index=True)
+    else: st.dataframe(exp[["Medicine ID", "Medicine Name", "Expiry Date", "Quantity"]], width="stretch", hide_index=True)
 
 with st.expander("Recent stock movements"):
     movements = load_stock_movements(12)
     if movements.empty: st.info("No stock movements recorded yet.")
-    else: st.dataframe(movements, use_container_width=True, hide_index=True)
+    else: st.dataframe(movements, width="stretch", hide_index=True)

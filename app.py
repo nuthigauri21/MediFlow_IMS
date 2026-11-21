@@ -94,7 +94,7 @@ if st.session_state.authenticated:
         
         # Logout Section
         st.markdown("<hr style='margin: 15px 0;'>", unsafe_allow_html=True)
-        if st.button("🚪 Log Out", use_container_width=True):
+        if st.button("🚪 Log Out", width="stretch"):
             st.session_state.authenticated = False
             st.session_state.username = ""
             st.rerun()
@@ -142,7 +142,7 @@ else:
                 login_password = st.text_input("Password", type="password", key="login_password", placeholder="Enter password")
                 
                 st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
-                if st.button("Sign In", type="primary", use_container_width=True):
+                if st.button("Sign In", type="primary", width="stretch"):
                     if not login_username or not login_password:
                         st.error("Please fill in all fields.")
                     elif authenticate_user(login_username, login_password):
@@ -163,7 +163,7 @@ else:
                 signup_confirm = st.text_input("Confirm Password", type="password", key="signup_confirm", placeholder="Confirm your password")
                 
                 st.markdown("<div style='margin-top: 25px;'></div>", unsafe_allow_html=True)
-                if st.button("Register & Create Account", type="primary", use_container_width=True):
+                if st.button("Register & Create Account", type="primary", width="stretch"):
                     if not signup_username or not signup_email or not signup_password or not signup_confirm:
                         st.error("Please fill in all fields.")
                     elif signup_password != signup_confirm:

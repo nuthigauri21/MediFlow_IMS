@@ -28,7 +28,7 @@ else:
         
         adjust_qty = st.number_input("Adjustment Quantity *", min_value=1, value=10, step=5, help="Number of items to add or subtract")
         
-        submit_btn = st.button("Update Stock Levels", use_container_width=True)
+        submit_btn = st.button("Update Stock Levels", width="stretch")
         
     with col2:
         st.subheader("Inventory Status Card")
