@@ -224,7 +224,7 @@ def plot_low_stock_chart(df_meds: pd.DataFrame) -> Optional[go.Figure]:
     )
     
     fig.add_hline(y=20, line_dash="dash", line_color="orange", annotation_text="Low Stock Threshold (20)")
-    text_color, grid_color = get_chart_theme()
+    
     fig.update_layout(
         margin=dict(t=50, b=50, l=60, r=20),
         paper_bgcolor='rgba(0,0,0,0)',
