@@ -58,7 +58,7 @@ with left:
         fig = px.area(trend, x="Sale Date", y="Total Amount", markers=True, color_discrete_sequence=["#0f9d8a"])
         fig.update_layout(height=330, margin=dict(l=8,r=8,t=18,b=8), paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", xaxis_title=None, yaxis_title="Revenue (₹)")
         fig.update_xaxes(showgrid=False); fig.update_yaxes(gridcolor="rgba(148,163,184,.18)")
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     else: st.info("No sales found for this period.")
 with right:
     st.markdown("### Inventory mix")
@@ -67,7 +67,7 @@ with right:
         fig = px.pie(cat, names="Category", values="SKUs", hole=.66, color_discrete_sequence=px.colors.qualitative.Safe)
         fig.update_layout(height=330, margin=dict(l=5,r=5,t=18,b=5), showlegend=True, legend_title=None, paper_bgcolor="rgba(0,0,0,0)")
         fig.update_traces(textposition="inside", textinfo="percent")
-        st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig, width="stretch", config={"displayModeBar": False})
     else: st.info("No inventory records in this selection.")
 
 low = filtered_meds[pd.to_numeric(filtered_meds.get("Quantity", pd.Series(dtype=float)), errors="coerce").fillna(0) < 20].copy() if not filtered_meds.empty else pd.DataFrame()
