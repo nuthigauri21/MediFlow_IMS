@@ -1,0 +1,16 @@
+# Activate virtual environment
+.\venv\Scripts\Activate.ps1
+
+### 4. Run the Streamlit Application
+Start the server:
+```powershell
+streamlit run app.py
+```
+This will automatically launch the browser and display the **MediFlow IMS Dashboard** on:
+`http://localhost:8501`
+
+---
+
+data from the kaggle
+
+in the terminal press ctrl+C to stop.
