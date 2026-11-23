@@ -341,3 +341,22 @@ button[role="switch"]:hover > div:first-of-type {
     border-color: #000000 !important;
 }
 
+/* Fix top-right Streamlit toolbar icons (Star, Edit, Menu) */
+header[data-testid="stHeader"] {
+    background-color: transparent !important;
+}
+header[data-testid="stHeader"] button,
+header[data-testid="stHeader"] svg {
+    color: #f8fafc !important;
+    fill: #f8fafc !important;
+}
+
+/* Fix white/washed-out text inside alert boxes (st.success, st.error, st.warning) */
+div[data-testid="stAlert"] {
+    background-color: rgba(15, 23, 42, 0.9) !important;
+    border: 1px solid rgba(148, 163, 184, 0.3) !important;
+}
+div[data-testid="stAlert"] p,
+div[data-testid="stAlert"] span {
+    color: #f8fafc !important;
+}
