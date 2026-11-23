@@ -360,3 +360,25 @@ div[data-testid="stAlert"] p,
 div[data-testid="stAlert"] span {
     color: #f8fafc !important;
 }
+
+
+
+/* Fix top-right Streamlit toolbar icons */
+header[data-testid="stHeader"] {
+    background-color: transparent !important;
+}
+header[data-testid="stHeader"] button,
+header[data-testid="stHeader"] svg {
+    color: #f8fafc !important;
+    fill: #f8fafc !important;
+}
+
+/* Fix white text inside alert boxes */
+div[data-testid="stAlert"] {
+    background-color: rgba(15, 23, 42, 0.9) !important;
+    border: 1px solid rgba(148, 163, 184, 0.3) !important;
+}
+div[data-testid="stAlert"] p,
+div[data-testid="stAlert"] span {
+    color: #f8fafc !important;
+}
